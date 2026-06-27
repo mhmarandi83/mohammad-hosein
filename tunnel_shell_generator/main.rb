@@ -21,7 +21,7 @@ module TunnelShellGenerator
       elsif projection >= ab_len
         b
       else
-        a + (ab_unit * projection)
+        a.offset(ab_unit, projection)
       end
     end
   end
@@ -384,10 +384,10 @@ module TunnelShellGenerator
         end
         
         pts = []
-        left_base = c + r * (-half_w)
-        right_base = c + r * half_w
-        left_wall_top = left_base + u * wall_height
-        right_wall_top = right_base + u * wall_height
+        left_base = c.offset(r, -half_w)
+        right_base = c.offset(r, half_w)
+        left_wall_top = left_base.offset(u, wall_height)
+        right_wall_top = right_base.offset(u, wall_height)
 
         if gen_floor
           pts << left_base
@@ -401,14 +401,17 @@ module TunnelShellGenerator
         end
         
         if gen_roof
-          m = c + u * wall_height
+          m = c.offset(u, wall_height)
           d = Math.sqrt(roof_radius**2 - half_w**2)
-          arc_center = m - u * d
+          arc_center = m.offset(u, -d)
           half_angle = Math.asin(half_w / roof_radius)
           (0..roof_segments).each do |s|
             ratio = s.to_f / roof_segments
             angle = -half_angle + (2.0 * half_angle * ratio)
-            arc_pt = arc_center + r * (roof_radius * Math.sin(angle)) + u * (roof_radius * Math.cos(angle))
+            arc_r_offset = r.x * (roof_radius * Math.sin(angle))
+            arc_u_offset = u.x * (roof_radius * Math.cos(angle))
+            arc_pt = arc_center.offset(r, (roof_radius * Math.sin(angle)))
+            arc_pt = arc_pt.offset(u, (roof_radius * Math.cos(angle)))
             if s == 0 && gen_walls
               next
             elsif s == roof_segments && gen_walls
@@ -599,7 +602,7 @@ module TunnelShellGenerator
           <button onclick="generateTunnel()">Generate Tunnel</button>
           <div id="status" class="status">Ready</div>
         </div>
-        <div class="footer">Tunnel Shell Generator v1.3.2</div>
+        <div class="footer">Tunnel Shell Generator v1.4.0</div>
         <script>
           function generateTunnel() {
             var status = document.getElementById('status');
