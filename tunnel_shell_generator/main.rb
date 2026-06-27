@@ -278,53 +278,66 @@ module TunnelShellGenerator
           (left_points[i].z + right_points[i].z) / 2.0
         )
       end
+      
       tangents = []
       (0...n).each do |i|
         if i == 0
-          t = (centers[1] - centers[0]).normalize
+          t = centers[1] - centers[0]
         elsif i == n - 1
-          t = (centers[n - 1] - centers[n - 2]).normalize
+          t = centers[n - 1] - centers[n - 2]
         else
-          t = (centers[i + 1] - centers[i - 1]).normalize
+          t = centers[i + 1] - centers[i - 1]
         end
+        t = t.normalize
         tangents << t
       end
+      
       t0 = tangents[0]
       world_up = Geom::Vector3d.new(0, 0, 1)
       if t0.parallel?(world_up)
         world_up = Geom::Vector3d.new(1, 0, 0)
       end
+      
       initial_right = (right_points[0] - left_points[0]).normalize
       initial_up = (t0 * initial_right).normalize
       initial_right = (initial_up * t0).normalize
+      
       up_vectors = [initial_up]
       right_vectors = [initial_right]
+      
       (0...n - 1).each do |i|
         x_i = centers[i]
         x_next = centers[i + 1]
         t_i = tangents[i]
         t_next = tangents[i + 1]
         u_i = up_vectors[i]
+        
         v1 = x_next - x_i
         c1 = v1.dot(v1)
+        
         if c1 > 0.00001
-          u_i_l = u_i - v1 * (2.0 * (v1.dot(u_i) / c1))
-          t_i_l = t_i - v1 * (2.0 * (v1.dot(t_i) / c1))
+          u_i_l = u_i - v1 * (2.0 * (v1.dot(u_i)) / c1)
+          t_i_l = t_i - v1 * (2.0 * (v1.dot(t_i)) / c1)
+          
           v2 = t_next - t_i_l
           c2 = v2.dot(v2)
+          
           u_next = if c2 > 0.00001
-                     u_i_l - v2 * (2.0 * (v2.dot(u_i_l) / c2))
+                     u_i_l - v2 * (2.0 * (v2.dot(u_i_l)) / c2)
                    else
                      u_i_l
                    end
         else
           u_next = u_i
         end
+        
         u_next = u_next.normalize
         r_next = (u_next * t_next).normalize
+        
         up_vectors << u_next
         right_vectors << r_next
       end
+      
       (0...n).each do |i|
         exact_right = (right_points[i] - left_points[i]).normalize
         exact_up = (tangents[i] * exact_right).normalize
@@ -365,11 +378,13 @@ module TunnelShellGenerator
         r = frame.right
         u = frame.up
         half_w = w / 2.0
+        
         if gen_roof && roof_radius < half_w
           raise StandardError, "Radius is too small! At section #{idx + 1}, width is #{sprintf('%.2f', w.to_m)}m, which requires a minimum roof radius of #{sprintf('%.2f', half_w.to_m)}m. Requested radius was #{sprintf('%.2f', roof_radius.to_m)}m."
         end
+        
         pts = []
-        left_base = c - r * half_w
+        left_base = c + r * (-half_w)
         right_base = c + r * half_w
         left_wall_top = left_base + u * wall_height
         right_wall_top = right_base + u * wall_height
@@ -377,12 +392,14 @@ module TunnelShellGenerator
         if gen_floor
           pts << left_base
         end
+        
         if gen_walls
           pts << left_base unless gen_floor
           pts << left_wall_top
         else
           pts << left_base if !gen_floor && !gen_roof
         end
+        
         if gen_roof
           m = c + u * wall_height
           d = Math.sqrt(roof_radius**2 - half_w**2)
@@ -400,15 +417,18 @@ module TunnelShellGenerator
             pts << arc_pt
           end
         end
+        
         if gen_walls
           pts << right_wall_top
           pts << right_base
         else
           pts << right_base if !gen_floor && !gen_roof
         end
+        
         if gen_floor
           pts << right_base unless pts.include?(right_base)
         end
+        
         sections << Section.new(pts, w, frame, left_base, right_base, left_wall_top, right_wall_top)
       end
       sections
@@ -474,9 +494,6 @@ module TunnelShellGenerator
     end
   end
 
-  # ============================================================
-  # ✅ UI DIALOG - درست شده با communicate صحیح
-  # ============================================================
   module TunnelUI
     def self.show_dialog(callback)
       begin
@@ -493,12 +510,10 @@ module TunnelShellGenerator
         )
         dialog.set_html(get_html_content)
 
-        # ✅ اصلاح: Callback صحیح برای دکمه
         dialog.add_action_callback("generate") do |_dialog, params_json|
           puts ">> Generate button clicked with params: #{params_json}"
 
           begin
-            # Parse JSON parameters from JavaScript
             params_hash = JSON.parse(params_json)
             
             ruby_params = {
@@ -584,7 +599,7 @@ module TunnelShellGenerator
           <button onclick="generateTunnel()">Generate Tunnel</button>
           <div id="status" class="status">Ready</div>
         </div>
-        <div class="footer">Tunnel Shell Generator v1.3.0</div>
+        <div class="footer">Tunnel Shell Generator v1.3.1</div>
         <script>
           function generateTunnel() {
             var status = document.getElementById('status');
@@ -592,7 +607,6 @@ module TunnelShellGenerator
             status.style.color = '#0078d4';
 
             try {
-              // ✅ اصلاح: جمع‌آوری تمام مقادیر و ارسال به صورت JSON
               var params = {
                 roof_radius: parseFloat(document.getElementById('roof_radius').value),
                 wall_height: parseFloat(document.getElementById('wall_height').value),
@@ -606,7 +620,6 @@ module TunnelShellGenerator
                 generate_floor: document.getElementById('generate_floor').checked
               };
 
-              // ✅ اصلاح: ارسال JSON به Ruby
               window.location = 'skp:generate@' + JSON.stringify(params);
               
               status.innerHTML = '✓ Request sent to SketchUp!';
